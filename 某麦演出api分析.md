@@ -56,15 +56,15 @@ https://acs.m.taobao.com/gw/mtop.alibaba.damai.detail.getdetail/1.2/
 
 其中`data.result`就是演出的detail数据:
 
-![image-20230718150401539](某麦演出api分析.assets\image-20230718150401539.png)
+<img src="某麦演出api分析.assets\image-20230718150401539.png" alt="image-20230718150401539" />
 
 猜测`sellStartTime`就是开始时间,用`countDown`作倒计时.尝试在APP源码中查找
 
-![image-20230718150535376](某麦演出api分析.assets\image-20230718150535376.png)
+<img src="某麦演出api分析.assets\image-20230718150535376.png" alt="image-20230718150535376" />
 
 找到一个叫做`ProjectItemDataBean`的类,看一下这个`DataBean`用来做什么
 
-![image-20230718150750719](某麦演出api分析.assets\image-20230718150750719.png)
+<img src="某麦演出api分析.assets\image-20230718150750719.png" alt="image-20230718150750719" />
 
 继续查找`countDown`的用例
 
@@ -99,7 +99,7 @@ ProjectItemDataBean["setCountDown"].implementation = function (j) {
 
 于是我尝试查找倒计时结束之后的逻辑,在View层有一个`TimeCountDownListener`lim
 
-![image-20230718160619416](某麦演出api分析.assets\image-20230718160619416.png)
+<img src="某麦演出api分析.assets\image-20230718160619416.png" alt="image-20230718160619416" />
 
 这里是更新了`BuyBtnText`,还更新了` this.mProjectItemStatusHelper.m45526u(this.mProjectItemDataBean);`,所以估计在点击`立即购买`按钮还有其他数据的判断.
 
