@@ -31,6 +31,8 @@ app版本：8.4.5
 
 从界面上看，待开售的页面和立即购买页面是的却别是开售倒计时，从开发估计一定是会通过api获取开售时间，在前端进行倒计时。
 
+![GIF 2023-7-20 15-28-18](某麦演出api分析.assets/GIF 2023-7-20 15-28-18.gif)
+
 通过抓包得知获取详情的api是：
 
 ```
@@ -91,7 +93,7 @@ ProjectItemDataBean["setCountDown"].implementation = function (j) {
 
 直接把`countDown`设成5秒以内,效果是成功的
 
-
+<img src="某麦演出api分析.assets/GIF 2023-7-20 17-49-16.gif" alt="GIF 2023-7-20 17-49-16" style="zoom:50%;" />
 
 但是即便是倒计时小时了显示立即购买,点击立即购买按钮依然是没办法进入选择价钱页面,为什么呢?
 
@@ -217,7 +219,7 @@ function updateSkuBean(skubean) {
 
 如果一切正常最后会运行`openSkuActivity()`进入到下一个选购界面
 
-
+<img src="某麦演出api分析.assets/GIF 2023-7-20 15-38-38.gif" alt="GIF 2023-7-20 15-38-38" style="zoom:50%;" />
 
 
 
@@ -331,7 +333,7 @@ C20621["onSuccess"].overload(
 
 这样的话就能在演出未开始正式开售之前,提前进入到选择页面:
 
-
+![image-20230720175245750](某麦演出api分析.assets/image-20230720175245750.png)
 
 
 
