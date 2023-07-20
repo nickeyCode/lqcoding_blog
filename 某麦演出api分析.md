@@ -31,7 +31,7 @@ app版本：8.4.5
 
 从界面上看，待开售的页面和立即购买页面是的却别是开售倒计时，从开发估计一定是会通过api获取开售时间，在前端进行倒计时。
 
-![GIF 2023-7-20 15-28-18](某麦演出api分析.assets/GIF 2023-7-20 15-28-18.gif)
+<img src="某麦演出api分析.assets/GIF 2023-7-20 15-28-18.gif" alt="GIF 2023-7-20 15-28-18" style="zoom:50%;" />
 
 通过抓包得知获取详情的api是：
 
@@ -56,23 +56,23 @@ https://acs.m.taobao.com/gw/mtop.alibaba.damai.detail.getdetail/1.2/
 
 其中`data.result`就是演出的detail数据:
 
-![image-20230718150401539](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718150401539.png)
+![image-20230718150401539](某麦演出api分析.assets\image-20230718150401539.png)
 
 猜测`sellStartTime`就是开始时间,用`countDown`作倒计时.尝试在APP源码中查找
 
-![image-20230718150535376](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718150535376.png)
+![image-20230718150535376](某麦演出api分析.assets\image-20230718150535376.png)
 
 找到一个叫做`ProjectItemDataBean`的类,看一下这个`DataBean`用来做什么
 
-![image-20230718150750719](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718150750719.png)
+![image-20230718150750719](某麦演出api分析.assets\image-20230718150750719.png)
 
 继续查找`countDown`的用例
 
-![image-20230718153559468](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718153559468.png)
+![image-20230718153559468](某麦演出api分析.assets\image-20230718153559468.png)
 
 发现了`ProjectDetailItemMainFragment`,应该是View层了,查看是怎么使用
 
-![image-20230718153703758](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718153703758.png)
+![image-20230718153703758](某麦演出api分析.assets\image-20230718153703758.png)
 
 从api 返回知道`countdown`返回的值是`591614`, 估计是秒数,所以hook一下测试:
 
@@ -99,11 +99,11 @@ ProjectItemDataBean["setCountDown"].implementation = function (j) {
 
 于是我尝试查找倒计时结束之后的逻辑,在View层有一个`TimeCountDownListener`lim
 
-![image-20230718160619416](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718160619416.png)
+![image-20230718160619416](某麦演出api分析.assets\image-20230718160619416.png)
 
 这里是更新了`BuyBtnText`,还更新了` this.mProjectItemStatusHelper.m45526u(this.mProjectItemDataBean);`,所以估计在点击`立即购买`按钮还有其他数据的判断.
 
-![image-20230718160657553](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718160657553.png)
+![image-20230718160657553](某麦演出api分析.assets\image-20230718160657553.png)
 
 这是通过阅读代码发现有一个类叫做`ProjectItemStatusHelper.OnBottomViewClickListener`,里面的函数:
 
@@ -158,7 +158,7 @@ processTimeCountDownClick()->processClickNotRefreshAfterCountDown()->getSubProje
 
 最终调用`skuRequest`再次call api获取数据:
 
-![image-20230718164524955](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230718164524955.png)
+![image-20230718164524955](某麦演出api分析.assets\image-20230718164524955.png)
 
 在`ProjectDetailItemMainFragment.onReturnSkuBeanDataSuccess()`中可以看到,原来点击按钮之后会再次获取`skuBean`,然后判断里面的`itemBuyBtnBean.btnStatus`是否等于106和倒计时是否等于0,最终运行`popupSkuByPerformInfo()`
 
@@ -227,7 +227,7 @@ function updateSkuBean(skubean) {
 
 然而进入了选择场次票档界面,底部的按钮依然是"提交开售提醒",不是立即购买,这里继续看下有无办法Hook一下
 
-<img src="E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719112839745.png" alt="image-20230719112839745" style="zoom:50%;" /><img src="E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719113029610.png" alt="image-20230719113029610" style="zoom:50%;" />
+<img src="某麦演出api分析.assets\image-20230719112839745.png" alt="image-20230719112839745" style="zoom:50%;" /><img src="某麦演出api分析.assets\image-20230719113029610.png" alt="image-20230719113029610" style="zoom:50%;" />
 
 通过观察,如果是可购买状态的话会显示数量和总价,再有确定按钮.
 
@@ -235,7 +235,7 @@ function updateSkuBean(skubean) {
 
 经过查找,锁定call api的类是`DMOrderBuildRequest`
 
-![image-20230719143146634](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719143146634.png)
+![image-20230719143146634](某麦演出api分析.assets\image-20230719143146634.png)
 
 
 
@@ -253,25 +253,25 @@ NcovSkuActivity->NcovSkuFragment->initData->updateAllview->this.mModel.getSkuBea
 
 而其中有一个`this.skuBottomInfo`,结合界面动作,只有点击了票档才会出现底部的操作栏,所以猜测这里是底部确认按钮显示的关键
 
-![image-20230719161020249](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719161020249.png)
+![image-20230719161020249](某麦演出api分析.assets\image-20230719161020249.png)
 
 继续往下看有一个叫做`this.mSelectedPerform = this.mSkuBean.perform;`的变量,应该就是选择了的票档.查找一下`mSelectedPerform`的引用
 
-![image-20230719161334921](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719161334921.png)
+![image-20230719161334921](某麦演出api分析.assets\image-20230719161334921.png)
 
 发现了`mSkuBottomView`,感觉距离终点越来越近了(`MMSkuBottomView`是我起的别名)
 
-![image-20230719162525996](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719162525996.png)
+![image-20230719162525996](某麦演出api分析.assets\image-20230719162525996.png)
 
 接下来分析`mSkuBottomView`的基类:
 
-![image-20230719163742376](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719163742376.png)
+![image-20230719163742376](某麦演出api分析.assets\image-20230719163742376.png)
 
 这个类就看得比较困难了,都是混淆后的名字,不过还好有中文哈哈哈,
 
 其中一个函数叫`h()`找到想要的答案(我重命名为`buyBottomUI`):
 
-![image-20230719163916467](E:\nickey\lqcoding_blog\某麦演出api分析.assets\image-20230719163916467.png)
+![image-20230719163916467](某麦演出api分析.assets\image-20230719163916467.png)
 
 其中用作判断的`this.f40114o`就是`NcovSkuBottomInfo`.
 
