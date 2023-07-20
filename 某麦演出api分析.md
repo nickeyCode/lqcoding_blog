@@ -68,11 +68,11 @@ https://acs.m.taobao.com/gw/mtop.alibaba.damai.detail.getdetail/1.2/
 
 继续查找`countDown`的用例
 
-![image-20230718153559468](某麦演出api分析.assets\image-20230718153559468.png)
+<img src="某麦演出api分析.assets\image-20230718153559468.png" alt="image-20230718153559468" />
 
 发现了`ProjectDetailItemMainFragment`,应该是View层了,查看是怎么使用
 
-![image-20230718153703758](某麦演出api分析.assets\image-20230718153703758.png)
+<img src="某麦演出api分析.assets\image-20230718153703758.png" alt="image-20230718153703758" />
 
 从api 返回知道`countdown`返回的值是`591614`, 估计是秒数,所以hook一下测试:
 
@@ -103,7 +103,7 @@ ProjectItemDataBean["setCountDown"].implementation = function (j) {
 
 这里是更新了`BuyBtnText`,还更新了` this.mProjectItemStatusHelper.m45526u(this.mProjectItemDataBean);`,所以估计在点击`立即购买`按钮还有其他数据的判断.
 
-![image-20230718160657553](某麦演出api分析.assets\image-20230718160657553.png)
+<img src="某麦演出api分析.assets\image-20230718160657553.png" alt="image-20230718160657553" />
 
 这是通过阅读代码发现有一个类叫做`ProjectItemStatusHelper.OnBottomViewClickListener`,里面的函数:
 
@@ -158,7 +158,7 @@ processTimeCountDownClick()->processClickNotRefreshAfterCountDown()->getSubProje
 
 最终调用`skuRequest`再次call api获取数据:
 
-![image-20230718164524955](某麦演出api分析.assets\image-20230718164524955.png)
+<img src="某麦演出api分析.assets\image-20230718164524955.png" alt="image-20230718164524955" />
 
 在`ProjectDetailItemMainFragment.onReturnSkuBeanDataSuccess()`中可以看到,原来点击按钮之后会再次获取`skuBean`,然后判断里面的`itemBuyBtnBean.btnStatus`是否等于106和倒计时是否等于0,最终运行`popupSkuByPerformInfo()`
 
@@ -235,7 +235,7 @@ function updateSkuBean(skubean) {
 
 经过查找,锁定call api的类是`DMOrderBuildRequest`
 
-![image-20230719143146634](某麦演出api分析.assets\image-20230719143146634.png)
+<img src="某麦演出api分析.assets\image-20230719143146634.png" alt="image-20230719143146634" />
 
 
 
@@ -253,25 +253,25 @@ NcovSkuActivity->NcovSkuFragment->initData->updateAllview->this.mModel.getSkuBea
 
 而其中有一个`this.skuBottomInfo`,结合界面动作,只有点击了票档才会出现底部的操作栏,所以猜测这里是底部确认按钮显示的关键
 
-![image-20230719161020249](某麦演出api分析.assets\image-20230719161020249.png)
+<img src="某麦演出api分析.assets\image-20230719161020249.png" alt="image-20230719161020249" />
 
 继续往下看有一个叫做`this.mSelectedPerform = this.mSkuBean.perform;`的变量,应该就是选择了的票档.查找一下`mSelectedPerform`的引用
 
-![image-20230719161334921](某麦演出api分析.assets\image-20230719161334921.png)
+<img src="某麦演出api分析.assets\image-20230719161334921.png" alt="image-20230719161334921" />
 
 发现了`mSkuBottomView`,感觉距离终点越来越近了(`MMSkuBottomView`是我起的别名)
 
-![image-20230719162525996](某麦演出api分析.assets\image-20230719162525996.png)
+<img src="某麦演出api分析.assets\image-20230719162525996.png" alt="image-20230719162525996" />
 
 接下来分析`mSkuBottomView`的基类:
 
-![image-20230719163742376](某麦演出api分析.assets\image-20230719163742376.png)
+<img src="某麦演出api分析.assets\image-20230719163742376.png" alt="image-20230719163742376" />
 
 这个类就看得比较困难了,都是混淆后的名字,不过还好有中文哈哈哈,
 
 其中一个函数叫`h()`找到想要的答案(我重命名为`buyBottomUI`):
 
-![image-20230719163916467](某麦演出api分析.assets\image-20230719163916467.png)
+<img src="某麦演出api分析.assets\image-20230719163916467.png" alt="image-20230719163916467" />
 
 其中用作判断的`this.f40114o`就是`NcovSkuBottomInfo`.
 
@@ -333,7 +333,7 @@ C20621["onSuccess"].overload(
 
 这样的话就能在演出未开始正式开售之前,提前进入到选择页面:
 
-![image-20230720175245750](某麦演出api分析.assets/image-20230720175245750.png)
+<img src="某麦演出api分析.assets/image-20230720175245750.png" alt="image-20230720175245750" />
 
 
 
