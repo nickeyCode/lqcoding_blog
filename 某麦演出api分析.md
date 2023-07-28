@@ -97,7 +97,7 @@ ProjectItemDataBean["setCountDown"].implementation = function (j) {
 
 但是即便是倒计时小时了显示立即购买,点击立即购买按钮依然是没办法进入选择价钱页面,为什么呢?
 
-于是我尝试查找倒计时结束之后的逻辑,在View层有一个`TimeCountDownListener`lim
+于是我尝试查找倒计时结束之后的逻辑,在View层有一个`TimeCountDownListener`
 
 <img src="某麦演出api分析.assets\image-20230718160619416.png" alt="image-20230718160619416" />
 
@@ -338,6 +338,14 @@ C20621["onSuccess"].overload(
 
 
 虽然如此,也是需要等正式开售了之后才能点击正常进入到订单确认页面,如果提前点击会报错.感觉提前进入的hook到这里已经是极限了,因为订单确认页面是需要调用`buildOrder`成功之后的数据生成的,所以这里开始就要靠运气了
+
+
+
+## 无视重试返回上一页
+
+有抢票经验的朋友应该会留意到一个细节,就捡漏了,当第一次尝试购票失败,就会被踢回上一页,从新选票档再提交:
+
+
 
 
 
