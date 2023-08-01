@@ -345,13 +345,132 @@ C20621["onSuccess"].overload(
 
 有抢票经验的朋友应该会留意到一个细节,就捡漏了,当第一次尝试购票失败,就会被踢回上一页,从新选票档再提交:
 
+![GIF 2023-7-31 15-54-51](某麦演出api分析.assets/GIF 2023-7-31 15-54-51.gif)
+
+这个动作非常影响捡漏速度,有无办法可以去掉呢?
+
+从整个行为过程分析:
+
+调用接口---->返回数据---->弹出窗口---->点击按钮---->关闭页面/返回上一页
+
+所以如果我们可以找到弹出窗口,然后hook按钮点击事件,应该就可以不返回上一页
+
+### 动手
+
+根据上面的过程分析,首先需要找到"提交订单"调用接口的地方(`UltronPresenter `):
+
+![image-20230801114325694](某麦演出api分析.assets/image-20230801114325694.png)
+
+其中的`onSuccess`和`onError`就是调用接口成功和失败的回调函数.
+
+`DmUltronRequestErrorUtils.getInstance()`猜测应该是错误弹出窗口的单例.进去看看~
+
+枚举的名字:
+
+![image-20230801114853607](某麦演出api分析.assets/image-20230801114853607.png)
 
 
 
+多个`点击事件`的设置:
+
+![image-20230801115018261](某麦演出api分析.assets/image-20230801115018261.png)
 
 
 
+都证明这里应该就是错误弹窗点击按钮设置回调的地方.到这个就可以开始暴力hook了
 
+### 注入
 
+`DmUltronRequestErrorUtils`中有三个`OnClickListener`:
 
+1. `DialogInterface$OnClickListenerC4733a`
+2. `DialogInterface$OnClickListenerC4734b`
+3. `DialogInterface$OnClickListenerC4735c`
 
+暴力hook的方法就是把这三个`OnClickListener`的`onClick`事件替换:
+
+```
+let DialogInterface$OnClickListenerC4733a = Java.use(
+  "cn.damai.ultron.utils.DmUltronRequestErrorUtils$a"
+);
+DialogInterface$OnClickListenerC4733a["onClick"].implementation = function (
+  dialogInterface,
+  i
+) {
+  console.log(
+    `DialogInterface$OnClickListenerC4733a.onClick is called: dialogInterface=${dialogInterface}, i=${i}`
+  );
+  // this["onClick"](dialogInterface, i);
+};
+
+let DialogInterface$OnClickListenerC4734b = Java.use(
+  "cn.damai.ultron.utils.DmUltronRequestErrorUtils$b"
+);
+DialogInterface$OnClickListenerC4734b["onClick"].implementation = function (
+  dialogInterface,
+  i
+) {
+  console.log(
+    `DialogInterface$OnClickListenerC4734b.onClick is called: dialogInterface=${dialogInterface}, i=${i}`
+  );
+  // this["onClick"](dialogInterface, i);
+};
+
+let DialogInterface$OnClickListenerC4735c = Java.use(
+  "cn.damai.ultron.utils.DmUltronRequestErrorUtils$c"
+);
+DialogInterface$OnClickListenerC4735c["onClick"].implementation = function (
+  dialogInterface,
+  i
+) {
+  console.log(
+    `DialogInterface$OnClickListenerC4735c.onClick is called: dialogInterface=${dialogInterface}, i=${i}`
+  );
+  // this["onClick"](dialogInterface, i);
+};
+```
+
+这样就能做到无视重试返回上一页
+
+![GIF 2023-8-1 12-06-00](某麦演出api分析.assets/GIF 2023-8-1 12-06-00.gif)
+
+### 继续进阶
+
+在阅读源码过程中发现了错误处理的工厂函数:
+
+![image-20230801164524772](某麦演出api分析.assets/image-20230801164524772.png)
+
+发现其中有`TOAST`的`errorType`,`TOAST`在android中是一个自动消失的提示消失,所以在想如果hook这个函数,是否可以做到连`dialog`都不用弹窗了,就可以疯狂按提交了,于是hook:
+
+```
+let DmUltronRequestErrorUtils = Java.use(
+  "cn.damai.ultron.utils.DmUltronRequestErrorUtils"
+);
+DmUltronRequestErrorUtils["b"].overload(
+  "cn.damai.ultron.view.activity.DmOrderActivity",
+  "cn.damai.ultron.utils.DmUltronRequestErrorUtils$ErrorType",
+  "java.lang.String",
+  "java.lang.String",
+  "java.lang.String"
+).implementation = function (dmOrderActivity, errorType, str, str2, str3) {
+  console.log(
+    `DmUltronRequestErrorUtils.MMdmOrderActivityApiErrorHandle is called: dmOrderActivity=${dmOrderActivity}, errorType=${errorType}, str=${str}, str2=${str2}, str3=${str3}`
+  );
+  let ErrorType = Java.use(
+    "cn.damai.ultron.utils.DmUltronRequestErrorUtils$ErrorType"
+  );
+  let TOAST = ErrorType.TOAST;
+  console.log(this._a.value);
+  this["b"](dmOrderActivity, TOAST.value, str, str2, str3);
+  if (this._a.value != "CREATE") {
+    //    console.log("build/adjust api , finish");
+    dmOrderActivity.finish();
+  } else {
+        console.log("CREATE api , toast");
+  }
+
+  // dmOrderActivity.finish();
+};
+```
+
+这里做到的操作效果是,如果是`create`接口的话,就用`toast`的形式提示,如果不是的话,就直接返回上一页.当然这里还可以做更多的细化判断.但是我这里就没有继续研究了.
