@@ -64,3 +64,50 @@
 在`DMRequester`中`execute`最终会调用函数`dmRequestExecute`
 
 ![image-20230808182346611](某麦演出app分析(四).assets/image-20230808182346611-1691490227400-1.png)
+
+`dmRequestExecute`的主要逻辑:
+
+```
+private boolean dmRequestExecute(Object obj, MMorderBuildRequestCallback mMorderBuildRequestCallback) {
+        IDMContext iDMContext = this.idmContext;
+        if (iDMContext instanceof MMsomeDataModelUltron) {
+           ...
+           ...//设置this.mmtopRequest的数据,这个会用于后面call api参数的生成
+           ...
+            MtopBusiness build = MtopBusiness.build(this.mmtopRequest);//MtopBusiness是call api的实例
+            ...
+            ...//设置build实例的参数
+            ...
+            //startRequest开始进行请求
+            if (this.f28883n == null) {
+                build.addListener((MtopListener) response).startRequest();
+            } else {
+                build.addListener((MtopListener) response).startRequest(this.f28883n);
+            }
+			...
+			...
+            return true;
+        }
+        return false;
+    }
+```
+
+`startRequest`主要是调用`super.asyncRequest()`获取到一个`ApiID`实例,这个应该就是一个抽象的Api请求追踪实例:
+
+![image-20230809121003662](某麦演出app分析(四).assets/image-20230809121003662.png)
+
+而这个`ApiID`实例是在底层的`MtopBuilder.asyncRequest`生成:
+
+![image-20230809141201852](某麦演出app分析(四).assets/image-20230809141201852.png)
+
+其中要注意这个`filterManager.start(null, createMtopContext);`,其中的`FilterManager`就是调用接口底层逻辑的过滤器,它负责完成接调用前的数据处理逻辑和调用后的回调逻辑,可以看看`FilterManager`->`AbstractFilterManager`->`InnerFilterManagerImpl`:
+
+![image-20230809141437372](某麦演出app分析(四).assets/image-20230809141437372.png)
+
+`addBefore`是调用前的处理逻辑,只有`return "CONTINUE"`才会继续下一个过滤器,`return "STOP"`就会直接去到`addAfter`的过滤器中.
+
+## `ProtocolParamBuilderBeforeFilter`
+
+用生成大部分请求参数和生成签名的过滤器`ProtocolParamBuilderBeforeFilter`来做例子,在例子中,通过`ProtocolParamBuilder.buildParams`生成参数`map`之后,如果没问题就set到`mtopContext.protocolParams = map;`中
+
+![image-20230811172951011](某麦演出app分析(四).assets/image-20230811172951011.png)
