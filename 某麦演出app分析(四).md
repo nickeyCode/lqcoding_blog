@@ -111,3 +111,133 @@ private boolean dmRequestExecute(Object obj, MMorderBuildRequestCallback mMorder
 用生成大部分请求参数和生成签名的过滤器`ProtocolParamBuilderBeforeFilter`来做例子,在例子中,通过`ProtocolParamBuilder.buildParams`生成参数`map`之后,如果没问题就set到`mtopContext.protocolParams = map;`中
 
 ![image-20230811172951011](某麦演出app分析(四).assets/image-20230811172951011.png)
+
+在`InnerProtocolParamBuilderImpl`中的`buildParams`,找到了很多熟悉的`key`:
+
+![image-20230814173819540](某麦演出app分析(四).assets/image-20230814173819540.png)
+
+这里就是生成签名的地方.
+
+`HashMap<String, String> unifiedSign = iSign.getUnifiedSign(hashMap3, hashMap4, str5, str6, z2);`
+
+## Hook
+
+hook一下`getUnifiedSign`函数看看输入和输出值:
+
+```
+let InnerSignImpl = Java.use("mtopsdk.security.InnerSignImpl");
+InnerSignImpl["getUnifiedSign"].implementation = function (
+  hashMap,
+  hashMap2,
+  str,
+  str2,
+  z
+) {
+  console.log(
+    `InnerSignImpl.getUnifiedSign is called: hashMap=${hashMap}, hashMap2=${hashMap2}, str=${str}, str2=${str2}, z=${z}`
+  );
+  let result = this["getUnifiedSign"](hashMap, hashMap2, str, str2, z);
+  console.log(`InnerSignImpl.getUnifiedSign result=${result}`);
+  return result;
+};
+```
+
+根据结果,就而已在`python`调用`rpc`调用获取需要的`header value`了:
+
+![image-20230814180227623](某麦演出app分析(四).assets/image-20230814180227623.png)
+
+首先在js脚本写下一个`rpc`:
+
+```
+rpc.exports.getBuildOrderSign = getBuildOrderSign;
+```
+
+然后根据`getUnifiedSign`需要的参数,定义一下需要的数据实例:
+
+```
+function getBuildOrderSign() {
+  let exParams = {
+    atomSplit: "1",
+    channel: "damai_app",
+    coVersion: "2.0",
+    coupon: "true",
+    seatInfo: "",
+    umpChannel: "10001",
+    websiteLanguage: "zh_CN",
+  };
+  let requestData = {
+    buyNow: "true",
+    buyParam: "727188803162_1_5045629021941",
+    exParams: JSON.stringify(exParams),
+  };
+  return getISign("mtop.trade.order.build","4.0", requestData);
+}
+```
+
+最后主动调用`getUnifiedSign`:
+
+```
+function getISign(api,apiVersion, requestData, z = true) {
+  let MtopConfig = Java.use("mtopsdk.mtop.global.MtopConfig");
+  let mtopconfig = MtopConfig.$new("INNER");
+  let UploadStatAppMonitorImpl = Java.use(
+    "mtopsdk.mtop.stat.UploadStatAppMonitorImpl"
+  );
+  let NetworkPropertyServiceImpl = Java.use(
+    "mtopsdk.mtop.network.NetworkPropertyServiceImpl"
+  );
+  mtopconfig.uploadStats = UploadStatAppMonitorImpl.$new();
+  mtopconfig.networkPropertyService = NetworkPropertyServiceImpl.$new();
+
+  let InnerSignImpl = Java.use("mtopsdk.security.InnerSignImpl");
+  let isign = InnerSignImpl.$new();
+  isign.init(mtopconfig);
+  // console.log("isign:", isign);
+  let reqAppKey = "xxxxxxxxxx";//reqAppKey有可能不一样
+  let authCode = null;
+  let HashMap = Java.use("java.util.HashMap");
+  let hm1 = HashMap.$new(64);
+  let hm2 = HashMap.$new();
+  let map1 = buildHashMap1(api,apiVersion, requestData);
+  console.log("show map1:");
+  console.log(map1.data);
+  for (let key in map1) {
+    hm1.put(key, map1[key]);
+  }
+  let map2 = buildHashMap2();
+  for (let key in map2) {
+    hm2.put(key, map2[key] + "");
+  }
+  let result = isign.getUnifiedSign(hm1, hm2, reqAppKey, authCode, z);
+  result = showJavaObjectString(result);
+  return { ...result, ...map1 };
+}
+```
+
+## 获取cookie
+
+获取`cookie`的方式就想对简单很多了,可以直接在`web`端登陆获取,也能通过`rpc`主动调用函数获取:
+
+```
+function getCookies(str) {
+  let CookieManager = Java.use("anetwork.channel.cookie.CookieManager");
+  let cookies = CookieManager.i(str);
+  // console.log("cookie:", cookies);
+  let list = cookies.split(";");
+  let result = {};
+  list.forEach((item) => {
+    let keyvalue = item.trim().split("=");
+    if (keyvalue[0].indexOf("sgcookie") == -1)
+      result[keyvalue[0]] = keyvalue[1];
+  });
+  console.log("result:", JSON.stringify(result));
+  return result;
+}
+```
+
+这个类的寻找过程太曲折了,有时间再补
+
+## python 模拟调用
+
+到这里可以说说是万事俱备了!开始写测试`python`代码了
+
